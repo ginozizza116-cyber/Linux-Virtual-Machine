@@ -1,98 +1,135 @@
-<script>
-const logEl = document.getElementById("log");
-const screenEl = document.getElementById("screen");
-const startBtn = document.getElementById("start-btn");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Linux Virtual Machine</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 16px;
+    }
+    #log {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px;
+      height: 150px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      margin-bottom: 8px;
+      white-space: pre-wrap;
+    }
+    #screen {
+      width: 800px;
+      height: 600px;
+      background: #000;
+      border: 1px solid #333;
+      margin-top: 8px;
+    }
+    #start-btn {
+      padding: 6px 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
 
-function log(msg) {
-  console.log(msg);
-  logEl.textContent += msg + "\n";
-  logEl.scrollTop = logEl.scrollHeight;
-}
+  <!-- v86 core script -->
+  <script src="https://copy.sh/v86/build/v86.js"></script>
+</head>
+<body>
 
-let emulator = null;
+  <div id="log"></div>
+  <button id="start-btn">Start VM</button>
+  <div id="screen"></div>
 
-// Auto-resize canvas
-function resizeCanvas() {
-  const rect = screenEl.getBoundingClientRect();
-  screenEl.width = rect.width;
-  screenEl.height = rect.height;
-}
-window.addEventListener("resize", resizeCanvas);
+  <script>
+    const logEl = document.getElementById("log");
+    const screenEl = document.getElementById("screen");
+    const startBtn = document.getElementById("start-btn");
 
-async function startVM() {
-  if (emulator) return;
-  startBtn.disabled = true;
+    function log(msg) {
+      console.log(msg);
+      logEl.textContent += msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
 
-  log("Initializing virtual machine...");
-  log("Downloading Alpine Linux ISO...");
+    let emulator = null;
 
-  // Alpine Linux (fast, stable)
-  const LINUX_IMAGE_URL =
-    "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86/alpine-standard-3.19.1-x86.iso";
+    async function startVM() {
+      if (emulator) return;
+      startBtn.disabled = true;
 
-  // Loading bar element
-  const loadingBar = document.createElement("div");
-  loadingBar.style.height = "6px";
-  loadingBar.style.width = "0%";
-  loadingBar.style.background = "#4caf50";
-  loadingBar.style.marginTop = "6px";
-  loadingBar.style.transition = "width 0.2s linear";
-  logEl.appendChild(loadingBar);
+      log("Initializing virtual machine...");
+      log("Downloading Alpine Linux ISO...");
 
-  emulator = new V86({
-    wasm_path: "https://copy.sh/v86/build/v86.wasm",
-    memory_size: 256 * 1024 * 1024,
-    vga_memory_size: 8 * 1024 * 1024,
-    screen_container: screenEl,
-    bios: { url: "https://copy.sh/v86/bios/seabios.bin" },
-    vga_bios: { url: "https://copy.sh/v86/bios/vgabios.bin" },
-    cdrom: { url: LINUX_IMAGE_URL },
-    autostart: true,
-  });
+      const LINUX_IMAGE_URL =
+        "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86/alpine-standard-3.19.1-x86.iso";
 
-  emulator.add_listener("emulator-ready", function () {
-    log("Booting Alpine Linux...");
-  });
+      const loadingBar = document.createElement("div");
+      loadingBar.style.height = "6px";
+      loadingBar.style.width = "0%";
+      loadingBar.style.background = "#4caf50";
+      loadingBar.style.marginTop = "6px";
+      loadingBar.style.transition = "width 0.2s linear";
+      logEl.appendChild(loadingBar);
 
-  emulator.add_listener("download-progress", function (e) {
-    if (!e.file || !e.loaded || !e.total) return;
-    const pct = ((e.loaded / e.total) * 100).toFixed(1);
-    loadingBar.style.width = pct + "%";
-    log(`Downloading ${e.file}: ${pct}%`);
-  });
+      emulator = new V86Starter({
+        wasm_path: "https://copy.sh/v86/build/v86.wasm",
+        memory_size: 256 * 1024 * 1024,
+        vga_memory_size: 8 * 1024 * 1024,
 
-  emulator.add_listener("download-error", function (e) {
-    log("❌ ERROR: Failed to download " + (e.file || "unknown file"));
-    startBtn.disabled = false;
-    loadingBar.style.background = "#e53935";
-  });
+        screen_container: screenEl,
 
-  emulator.add_listener("halt", function () {
-    log("VM halted.");
-    startBtn.disabled = false;
-    emulator = null;
-  });
+        bios: { url: "https://copy.sh/v86/bios/seabios.bin" },
+        vga_bios: { url: "https://copy.sh/v86/bios/vgabios.bin" },
+        cdrom: { url: LINUX_IMAGE_URL },
+        autostart: true,
+      });
 
-  resizeCanvas();
-}
+      emulator.add_listener("emulator-ready", function () {
+        log("Booting Alpine Linux...");
+      });
 
-// Keyboard shortcuts
-document.addEventListener("keydown", (e) => {
-  if (!emulator) return;
+      emulator.add_listener("download-progress", function (e) {
+        if (!e.file || !e.loaded || !e.total) return;
+        const pct = ((e.loaded / e.total) * 100).toFixed(1);
+        loadingBar.style.width = pct + "%";
+        log(`Downloading ${e.file}: ${pct}%`);
+      });
 
-  // Ctrl + Alt + F = fullscreen
-  if (e.ctrlKey && e.altKey && e.key === "f") {
-    if (screenEl.requestFullscreen) screenEl.requestFullscreen();
-  }
+      emulator.add_listener("download-error", function (e) {
+        log("ERROR: Failed to download " + (e.file || "unknown file"));
+        startBtn.disabled = false;
+        loadingBar.style.background = "#e53935";
+      });
 
-  // Ctrl + Alt + R = reset VM
-  if (e.ctrlKey && e.altKey && e.key === "r") {
-    log("Resetting VM...");
-    emulator.stop();
-    emulator = null;
-    startVM();
-  }
-});
+      emulator.add_listener("halt", function () {
+        log("VM halted.");
+        startBtn.disabled = false;
+        emulator = null;
+      });
+    }
 
-startBtn.addEventListener("click", startVM);
-</script>
+    document.addEventListener("keydown", (e) => {
+      if (!emulator) return;
+
+      if (e.ctrlKey && e.altKey && e.key === "f") {
+        if (screenEl.requestFullscreen) screenEl.requestFullscreen();
+      }
+
+      if (e.ctrlKey && e.altKey && e.key === "r") {
+        log("Resetting VM...");
+        emulator.stop();
+        emulator = null;
+        startVM();
+      }
+    });
+
+    startBtn.addEventListener("click", startVM);
+  </script>
+</body>
+</html>

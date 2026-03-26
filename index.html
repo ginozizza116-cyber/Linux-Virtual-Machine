@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Linux Virtual Machine</title>
+  <title>Linux Virtual Machine (Mini RootFS)</title>
 
   <!-- Load v86 -->
   <script src="https://copy.sh/v86/build/v86.js"></script>
@@ -68,10 +68,10 @@
       startBtn.disabled = true;
 
       log("Initializing virtual machine...");
-      log("Downloading Alpine Linux ISO...");
+      log("Loading Alpine Mini RootFS...");
 
-      const LINUX_IMAGE_URL =
-        "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86/alpine-standard-3.19.1-x86.iso";
+      const ROOTFS_URL =
+        "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86/alpine-minirootfs-3.19.1-x86.tar.gz";
 
       const loadingBar = document.createElement("div");
       loadingBar.style.height = "6px";
@@ -90,12 +90,17 @@
 
         bios: { url: "https://copy.sh/v86/bios/seabios.bin" },
         vga_bios: { url: "https://copy.sh/v86/bios/vgabios.bin" },
-        cdrom: { url: LINUX_IMAGE_URL },
+
+        filesystem: {
+          basefs: {},
+          baseurl: ROOTFS_URL
+        },
+
         autostart: true,
       });
 
       emulator.add_listener("emulator-ready", function () {
-        log("Booting Alpine Linux...");
+        log("Booting Alpine Mini RootFS...");
       });
 
       emulator.add_listener("download-progress", function (e) {
